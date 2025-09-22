@@ -37,7 +37,6 @@ function App() {
   }, []);
 
   const handlePalettePieceClick = useCallback((id: string) => {
-    // Parçayı puzzle alanının yaklaşık ortasına yerleştir
     setPieces(prev => prev.map(p => (p.id === id ? { ...p, onBoard: true, position: { x: 300, y: 180 } } : p)));
   }, []);
 
@@ -54,7 +53,6 @@ function App() {
     setShowHint(false);
   };
 
-  // --- DÜZELTİLMİŞ ÇÖZÜM KONTROL MANTIĞI ---
   const checkSolution = () => {
     const solutionTemplate = currentShape.solution;
     if (!solutionTemplate || solutionTemplate.length === 0) {
@@ -62,13 +60,11 @@ function App() {
       return;
     }
     
-    // Puzzle alanının referans noktasını al
     const puzzleAreaContainer = document.querySelector('.lg\\:col-span-2.relative');
     if (!puzzleAreaContainer) {
       alert("Puzzle alanı bulunamadı!");
       return;
     }
-    const containerRect = puzzleAreaContainer.getBoundingClientRect();
 
     const positionTolerance = 35;
     const rotationTolerance = 15;
@@ -78,7 +74,6 @@ function App() {
       const userPiece = pieces.find(p => p.id === solutionPiece.pieceId);
       if (!userPiece || !userPiece.onBoard) { allPiecesCorrect = false; break; }
 
-      // Parçanın pozisyonunu, puzzle alanının parent'ına göre hesapla
       const relativeX = userPiece.position.x;
       const relativeY = userPiece.position.y;
 
@@ -91,7 +86,6 @@ function App() {
       const normalizedAngleDiff = Math.min(angleDiff, 360 - angleDiff);
       if (normalizedAngleDiff > rotationTolerance) { allPiecesCorrect = false; break; }
 
-      // Scale (flip) durumunu da kontrol et
       if (solutionPiece.scale) {
         if (userPiece.scale.x !== solutionPiece.scale.x || userPiece.scale.y !== solutionPiece.scale.y) {
           allPiecesCorrect = false;
@@ -122,9 +116,13 @@ function App() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center"> <Trophy className="w-6 h-6 text-white" /> </div>
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                <Trophy className="w-6 h-6 text-white" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent"> Tangram Master </h1>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                  Tangram Master
+                </h1>
                 <p className="text-sm text-gray-600">Zeka ve Sabır Oyunu</p>
               </div>
             </div>
@@ -140,17 +138,27 @@ function App() {
             </div>
           </div>
         </div>
-      </הeader>
+      </header>
       <main className="container mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 p-6 sticky top-24">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center"> <BookOpen className="w-5 h-5 mr-2 text-indigo-600" /> Kontroller </h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <BookOpen className="w-5 h-5 mr-2 text-indigo-600" /> Kontroller
+              </h3>
               <div className="space-y-3">
-                <button onClick={generateRandomShape} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-4 py-3 rounded-xl font-medium hover:from-purple-600 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg"> <Shuffle className="w-4 h-4" /> <span>Rastgele Şekil</span> </button>
-                <button onClick={resetPieces} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-3 rounded-xl font-medium hover:from-orange-600 hover:to-red-600 transform hover:scale-105 transition-all duration-200 shadow-lg"> <RotateCcw className="w-4 h-4" /> <span>Parçaları Sıfırla</span> </button>
-                <button onClick={() => setShowHint(!showHint)} className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-medium transform hover:scale-105 transition-all duration-200 shadow-lg ${showHint ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' : 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white hover:from-yellow-600 hover:to-amber-700'}`}> <Lightbulb className="w-4 h-4" /> <span>{showHint ? 'İpucu Gizle' : 'İpucu Göster'}</span> </button>
-                <button onClick={() => setShowTutorial(true)} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white px-4 py-3 rounded-xl font-medium hover:from-teal-600 hover:to-cyan-700 transform hover:scale-105 transition-all duration-200 shadow-lg"> <BookOpen className="w-4 h-4" /> <span>Nasıl Oynanır?</span> </button>
+                <button onClick={generateRandomShape} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-4 py-3 rounded-xl font-medium hover:from-purple-600 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                  <Shuffle className="w-4 h-4" /> <span>Rastgele Şekil</span>
+                </button>
+                <button onClick={resetPieces} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-3 rounded-xl font-medium hover:from-orange-600 hover:to-red-600 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                  <RotateCcw className="w-4 h-4" /> <span>Parçaları Sıfırla</span>
+                </button>
+                <button onClick={() => setShowHint(!showHint)} className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-medium transform hover:scale-105 transition-all duration-200 shadow-lg ${showHint ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' : 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white hover:from-yellow-600 hover:to-amber-700'}`}>
+                  <Lightbulb className="w-4 h-4" /> <span>{showHint ? 'İpucu Gizle' : 'İpucu Göster'}</span>
+                </button>
+                <button onClick={() => setShowTutorial(true)} className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white px-4 py-3 rounded-xl font-medium hover:from-teal-600 hover:to-cyan-700 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                  <BookOpen className="w-4 h-4" /> <span>Nasıl Oynanır?</span>
+                </button>
               </div>
               <div className="mt-6 text-center p-4 bg-gray-50 rounded-lg">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Hedef Şekil</h3>
