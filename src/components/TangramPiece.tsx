@@ -14,31 +14,26 @@ const TangramPiece: React.FC<TangramPieceProps> = ({ piece, onMove, onRotate }) 
     clientX: number,
     clientY: number
   ) => {
-    e.preventDefault();
+    // e.preventDefault() fare olayları için burada gerekli değil, 
+    // ancak touchstart içinde çağrılabilir. Şimdilik en temiz çözüm CSS.
     const target = e.currentTarget as HTMLElement;
     const parent = target.parentElement;
     if (!parent) return;
 
     const parentRect = parent.getBoundingClientRect();
 
-    // Fare pozisyonunun, parent elemente göre göreceli başlangıç noktasını bul
     const startXInParent = clientX - parentRect.left;
     const startYInParent = clientY - parentRect.top;
 
-    // Farenin, parçanın sol üst köşesine göre ofsetini hesapla
     const offsetX = startXInParent - piece.position.x;
     const offsetY = startYInParent - piece.position.y;
 
     const handleDragMove = (moveClientX: number, moveClientY: number) => {
-      // Farenin yeni pozisyonunu yine parent'a göre hesapla
       const newXInParent = moveClientX - parentRect.left;
       const newYInParent = moveClientY - parentRect.top;
-
-      // Parçanın yeni pozisyonunu ofseti çıkararak bul
       onMove(piece.id, { x: newXInParent - offsetX, y: newYInParent - offsetY });
     };
 
-    // --- Mouse Olayları için ---
     const handleMouseMove = (moveEvent: MouseEvent) => {
       handleDragMove(moveEvent.clientX, moveEvent.clientY);
     };
@@ -47,9 +42,9 @@ const TangramPiece: React.FC<TangramPieceProps> = ({ piece, onMove, onRotate }) 
       document.removeEventListener('mouseup', handleMouseUp);
     };
 
-    // --- Touch Olayları için ---
     const handleTouchMove = (moveEvent: TouchEvent) => {
-      moveEvent.preventDefault(); // Sayfanın kaymasını engelle
+      // Bu preventDefault da kaydırmayı engeller ancak CSS çözümü daha performanslıdır.
+      moveEvent.preventDefault();
       handleDragMove(moveEvent.touches[0].clientX, moveEvent.touches[0].clientY);
     };
     const handleTouchEnd = () => {
@@ -57,7 +52,7 @@ const TangramPiece: React.FC<TangramPieceProps> = ({ piece, onMove, onRotate }) 
       document.removeEventListener('touchend', handleTouchEnd);
     };
 
-    if ('touches' in e.nativeEvent) { // Olayın touch mı mouse mu olduğunu kontrol et
+    if ('touches' in e.nativeEvent) {
       document.addEventListener('touchmove', handleTouchMove, { passive: false });
       document.addEventListener('touchend', handleTouchEnd);
     } else {
@@ -73,9 +68,10 @@ const TangramPiece: React.FC<TangramPieceProps> = ({ piece, onMove, onRotate }) 
         width: 100,
         height: 100,
         transform: `translate(${piece.position.x}px, ${piece.position.y}px)`,
-        // Left ve Top artık doğrudan transform ile yönetildiği için 0'da kalabilir
         left: 0,
         top: 0,
+        // YENİ EKLENEN SATIR: TARAYICI KAYDIRMASINI ENGELLER
+        touchAction: 'none',
       }}
       onMouseDown={(e) => handleDragStart(e, e.clientX, e.clientY)}
       onTouchStart={(e) => handleDragStart(e, e.touches[0].clientX, e.touches[0].clientY)}
