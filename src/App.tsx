@@ -28,12 +28,17 @@ function App() {
     setPieces(prev => prev.map(p => (p.id === id ? { ...p, position } : p)));
   }, []);
 
-  const handlePieceRotate = useCallback((id: string) => {
-    setPieces(prev => prev.map(p => (p.id === id ? { ...p, rotation: (p.rotation + 45) % 360 } : p)));
+  const handleSetRotation = useCallback((id: string, rotation: number) => {
+    setPieces(prev => prev.map(p => (p.id === id ? { ...p, rotation } : p)));
+  }, []);
+
+  const handlePieceFlip = useCallback((id: string) => {
+    setPieces(prev => prev.map(p => (p.id === id ? { ...p, scale: { ...p.scale, x: p.scale.x * -1 as (1 | -1) } } : p)));
   }, []);
 
   const handlePalettePieceClick = useCallback((id: string) => {
-    setPieces(prev => prev.map(p => (p.id === id ? { ...p, onBoard: true, position: { x: 250, y: 150 } } : p)));
+    // Parçayı puzzle alanının yaklaşık ortasına yerleştir
+    setPieces(prev => prev.map(p => (p.id === id ? { ...p, onBoard: true, position: { x: 300, y: 180 } } : p)));
   }, []);
 
   const generateRandomShape = () => {
@@ -49,34 +54,50 @@ function App() {
     setShowHint(false);
   };
 
+  // --- DÜZELTİLMİŞ ÇÖZÜM KONTROL MANTIĞI ---
   const checkSolution = () => {
     const solutionTemplate = currentShape.solution;
     if (!solutionTemplate || solutionTemplate.length === 0) {
       alert("Bu şekil için çözüm verisi bulunmuyor. Lütfen 'Ev' şeklini deneyin.");
       return;
     }
-    const positionTolerance = 30;
-    const rotationTolerance = 12;
+    
+    // Puzzle alanının referans noktasını al
+    const puzzleAreaContainer = document.querySelector('.lg\\:col-span-2.relative');
+    if (!puzzleAreaContainer) {
+      alert("Puzzle alanı bulunamadı!");
+      return;
+    }
+    const containerRect = puzzleAreaContainer.getBoundingClientRect();
+
+    const positionTolerance = 35;
+    const rotationTolerance = 15;
     let allPiecesCorrect = true;
 
     for (const solutionPiece of solutionTemplate) {
       const userPiece = pieces.find(p => p.id === solutionPiece.pieceId);
       if (!userPiece || !userPiece.onBoard) { allPiecesCorrect = false; break; }
-      
-      const puzzleAreaRect = document.querySelector('.lg\\:col-span-2.relative')?.getBoundingClientRect();
-      if (!puzzleAreaRect) { allPiecesCorrect = false; break; }
 
-      const absolutePiecePosX = userPiece.position.x - puzzleAreaRect.left;
-      const absolutePiecePosY = userPiece.position.y - puzzleAreaRect.top;
+      // Parçanın pozisyonunu, puzzle alanının parent'ına göre hesapla
+      const relativeX = userPiece.position.x;
+      const relativeY = userPiece.position.y;
 
-      const dx = absolutePiecePosX - solutionPiece.position.x;
-      const dy = absolutePiecePosY - solutionPiece.position.y;
+      const dx = relativeX - solutionPiece.position.x;
+      const dy = relativeY - solutionPiece.position.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       if (distance > positionTolerance) { allPiecesCorrect = false; break; }
 
       const angleDiff = Math.abs(userPiece.rotation - solutionPiece.rotation) % 360;
       const normalizedAngleDiff = Math.min(angleDiff, 360 - angleDiff);
       if (normalizedAngleDiff > rotationTolerance) { allPiecesCorrect = false; break; }
+
+      // Scale (flip) durumunu da kontrol et
+      if (solutionPiece.scale) {
+        if (userPiece.scale.x !== solutionPiece.scale.x || userPiece.scale.y !== solutionPiece.scale.y) {
+          allPiecesCorrect = false;
+          break;
+        }
+      }
     }
 
     if (allPiecesCorrect) {
@@ -119,7 +140,7 @@ function App() {
             </div>
           </div>
         </div>
-      </header>
+      </הeader>
       <main className="container mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
@@ -153,7 +174,8 @@ function App() {
                 key={piece.id}
                 piece={piece}
                 onMove={handlePieceMove}
-                onRotate={handlePieceRotate}
+                onSetRotation={handleSetRotation}
+                onFlip={handlePieceFlip}
               />
             ))}
           </div>

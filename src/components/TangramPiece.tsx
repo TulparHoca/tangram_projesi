@@ -1,30 +1,29 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { TangramPiece as TangramPieceType, Position } from '../types/tangram';
+import { RotateCw } from 'lucide-react';
 
 interface TangramPieceProps {
   piece: TangramPieceType;
   onMove: (id: string, position: Position) => void;
-  onRotate: (id: string) => void;
+  onSetRotation: (id: string, rotation: number) => void;
+  onFlip: (id: string) => void;
 }
 
-const TangramPiece: React.FC<TangramPieceProps> = ({ piece, onMove, onRotate }) => {
+const TangramPiece: React.FC<TangramPieceProps> = ({ piece, onMove, onSetRotation, onFlip }) => {
+  // Parçanın ana elementine referans oluşturarak DOM gezintisini ortadan kaldırıyoruz.
+  const pieceRef = useRef<HTMLDivElement>(null);
 
-  const handleDragStart = (
-    e: React.MouseEvent | React.TouchEvent<HTMLDivElement>,
-    clientX: number,
-    clientY: number
-  ) => {
-    // e.preventDefault() fare olayları için burada gerekli değil, 
-    // ancak touchstart içinde çağrılabilir. Şimdilik en temiz çözüm CSS.
-    const target = e.currentTarget as HTMLElement;
-    const parent = target.parentElement;
+  // --- SÜRÜKLEME MANTIĞI ---
+  const handleDragStart = useCallback((clientX: number, clientY: number) => {
+    const pieceElement = pieceRef.current;
+    if (!pieceElement) return;
+
+    const parent = pieceElement.parentElement;
     if (!parent) return;
 
     const parentRect = parent.getBoundingClientRect();
-
     const startXInParent = clientX - parentRect.left;
     const startYInParent = clientY - parentRect.top;
-
     const offsetX = startXInParent - piece.position.x;
     const offsetY = startYInParent - piece.position.y;
 
@@ -34,48 +33,76 @@ const TangramPiece: React.FC<TangramPieceProps> = ({ piece, onMove, onRotate }) 
       onMove(piece.id, { x: newXInParent - offsetX, y: newYInParent - offsetY });
     };
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      handleDragMove(moveEvent.clientX, moveEvent.clientY);
+    const handleMouseMove = (e: MouseEvent) => handleDragMove(e.clientX, e.clientY);
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      handleDragMove(e.touches[0].clientX, e.touches[0].clientY);
     };
-    const handleMouseUp = () => {
+
+    const handleInteractionEnd = () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    const handleTouchMove = (moveEvent: TouchEvent) => {
-      // Bu preventDefault da kaydırmayı engeller ancak CSS çözümü daha performanslıdır.
-      moveEvent.preventDefault();
-      handleDragMove(moveEvent.touches[0].clientX, moveEvent.touches[0].clientY);
-    };
-    const handleTouchEnd = () => {
+      document.removeEventListener('mouseup', handleInteractionEnd);
       document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchend', handleInteractionEnd);
     };
 
-    if ('touches' in e.nativeEvent) {
-      document.addEventListener('touchmove', handleTouchMove, { passive: false });
-      document.addEventListener('touchend', handleTouchEnd);
-    } else {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-  };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleInteractionEnd);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleInteractionEnd);
+  }, [piece.id, piece.position, onMove]);
+
+
+  // --- DÖNDÜRME MANTIĞI ---
+  const handleRotateStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Sürüklemenin başlamasını engelle
+    
+    const pieceElement = pieceRef.current;
+    if (!pieceElement) return;
+
+    const pieceRect = pieceElement.getBoundingClientRect();
+    const centerX = pieceRect.left + pieceRect.width / 2;
+    const centerY = pieceRect.top + pieceRect.height / 2;
+
+    const handleRotateMove = (clientX: number, clientY: number) => {
+      const radians = Math.atan2(clientY - centerY, clientX - centerX);
+      let degrees = radians * (180 / Math.PI);
+      degrees += 90;
+      onSetRotation(piece.id, degrees);
+    };
+
+    const handleMouseMove = (e: MouseEvent) => handleRotateMove(e.clientX, e.clientY);
+    const handleTouchMove = (e: TouchEvent) => handleRotateMove(e.touches[0].clientX, e.touches[0].clientY);
+
+    const handleInteractionEnd = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleInteractionEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleInteractionEnd);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleInteractionEnd);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleInteractionEnd);
+  }, [piece.id, onSetRotation]);
 
   return (
     <div
-      className="absolute cursor-grab z-20 select-none"
+      ref={pieceRef}
+      className="absolute cursor-grab z-20 select-none group"
       style={{
         width: 100,
         height: 100,
         transform: `translate(${piece.position.x}px, ${piece.position.y}px)`,
         left: 0,
         top: 0,
-        // YENİ EKLENEN SATIR: TARAYICI KAYDIRMASINI ENGELLER
         touchAction: 'none',
       }}
-      onMouseDown={(e) => handleDragStart(e, e.clientX, e.clientY)}
-      onTouchStart={(e) => handleDragStart(e, e.touches[0].clientX, e.touches[0].clientY)}
-      onDoubleClick={() => onRotate(piece.id)}
+      onMouseDown={(e) => handleDragStart(e.clientX, e.clientY)}
+      onTouchStart={(e) => handleDragStart(e.touches[0].clientX, e.touches[0].clientY)}
+      onDoubleClick={() => onFlip(piece.id)}
     >
       <div 
         className="w-full h-full pointer-events-none"
@@ -96,6 +123,16 @@ const TangramPiece: React.FC<TangramPieceProps> = ({ piece, onMove, onRotate }) 
             />
           </g>
         </svg>
+      </div>
+
+      {/* Döndürme Kulakçığı */}
+      <div
+        className="absolute -top-4 left-1/2 -translate-x-1/2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center cursor-alias opacity-0 group-hover:opacity-100 transition-opacity"
+        onMouseDown={handleRotateStart}
+        onTouchStart={handleRotateStart}
+        title="Döndür"
+      >
+        <RotateCw className="w-4 h-4 text-gray-700" />
       </div>
     </div>
   );
