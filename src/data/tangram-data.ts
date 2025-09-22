@@ -4,65 +4,72 @@ export const INITIAL_PIECES: TangramPiece[] = [
   {
     id: 'large-triangle-1',
     type: 'large-triangle',
-    color: '#3B82F6', // Blue
+    color: '#3B82F6',
     position: { x: 0, y: 0 },
     rotation: 0,
     points: '0,0 100,0 50,50',
-    scale: { x: 1, y: 1 }
+    scale: { x: 1, y: 1 },
+    onBoard: false,
   },
   {
     id: 'large-triangle-2',
     type: 'large-triangle',
-    color: '#EF4444', // Red
+    color: '#EF4444',
     position: { x: 0, y: 0 },
     rotation: 0,
     points: '0,0 100,0 50,50',
-    scale: { x: 1, y: 1 }
+    scale: { x: 1, y: 1 },
+    onBoard: false,
   },
   {
     id: 'medium-triangle',
     type: 'medium-triangle',
-    color: '#10B981', // Green
+    color: '#10B981',
     position: { x: 0, y: 0 },
     rotation: 0,
     points: '0,0 70,0 35,35',
-    scale: { x: 1, y: 1 }
+    scale: { x: 1, y: 1 },
+    onBoard: false,
   },
   {
     id: 'small-triangle-1',
     type: 'small-triangle',
-    color: '#F59E0B', // Orange
+    color: '#F59E0B',
     position: { x: 0, y: 0 },
     rotation: 0,
     points: '0,0 50,0 25,25',
-    scale: { x: 1, y: 1 }
+    scale: { x: 1, y: 1 },
+    onBoard: false,
   },
   {
     id: 'small-triangle-2',
     type: 'small-triangle',
-    color: '#8B5CF6', // Purple
+    color: '#8B5CF6',
     position: { x: 0, y: 0 },
     rotation: 0,
     points: '0,0 50,0 25,25',
-    scale: { x: 1, y: 1 }
+    scale: { x: 1, y: 1 },
+    onBoard: false,
   },
   {
     id: 'square',
     type: 'square',
-    color: '#EC4899', // Pink
+    color: '#EC4899',
     position: { x: 0, y: 0 },
     rotation: 0,
     points: '0,0 35,0 35,35 0,35',
-    scale: { x: 1, y: 1 }
+    scale: { x: 1, y: 1 },
+    onBoard: false,
   },
   {
     id: 'parallelogram',
     type: 'parallelogram',
-    color: '#06B6D4', // Cyan
+    color: '#06B6D4',
     position: { x: 0, y: 0 },
     rotation: 0,
     points: '0,0 50,0 65,25 15,25',
-    scale: { x: 1, y: 1 }
+    scale: { x: 1, y: 1 },
+    onBoard: false,
   }
 ];
 
