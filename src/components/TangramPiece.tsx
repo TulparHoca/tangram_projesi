@@ -1,132 +1,150 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { TangramPiece as TangramPieceType, Position } from '../types/tangram';
 
 interface TangramPieceProps {
   piece: TangramPieceType;
+  isActive: boolean;
   onMove: (id: string, position: Position) => void;
   onSetRotation: (id: string, rotation: number) => void;
+  onInteractionStart: (id: string) => void;
+  onInteractionEnd: () => void;
 }
 
-// İki nokta arasındaki açıyı ve mesafeyi hesaplayan yardımcı fonksiyonlar
-const getAngle = (p1: Position, p2: Position) => Math.atan2(p2.y - p1.y, p2.x - p1.x);
-const getDistance = (p1: Position, p2: Position) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+const TangramPiece: React.FC<TangramPieceProps> = ({ piece, isActive, onMove, onSetRotation, onInteractionStart, onInteractionEnd }) => {
+  const pieceRef = useRef<HTMLDivElement>(null);
+  const animationFrameId = useRef<number | null>(null);
 
-const TangramPiece: React.FC<TangramPieceProps> = ({ piece, onMove, onSetRotation }) => {
-  const [isActive, setIsActive] = useState(false);
+  const gestureState = useRef({
+    isDragging: false,
+    isRotating: false,
+    startX: piece.position.x,
+    startY: piece.position.y,
+    touchStartX: 0,
+    touchStartY: 0,
+    initialAngle: 0,
+    initialRotation: 0,
+  }).current;
   
-  // Dokunma ve sürükleme durumlarını yönetmek için useRef'ler
-  const initialTouchState = useRef<{
-    touches: Position[];
-    pieceRotation: number;
-    angle: number;
-    distance: number;
-  } | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsActive(true); // Parçayı aktif (vurgulu) yap
-
-    const touches = Array.from(e.targetTouches).map(t => ({ x: t.clientX, y: t.clientY }));
-
-    // Tek dokunuş (sürükleme başlangıcı)
-    if (touches.length === 1) {
-      initialTouchState.current = {
-        touches,
-        pieceRotation: piece.rotation,
-        angle: 0,
-        distance: 0,
-      };
-    } 
-    // İki dokunuş (döndürme başlangıcı)
-    else if (touches.length === 2) {
-      initialTouchState.current = {
-        touches,
-        pieceRotation: piece.rotation,
-        angle: getAngle(touches[0], touches[1]),
-        distance: getDistance(touches[0], touches[1]),
-      };
+  useEffect(() => {
+    if (pieceRef.current && !gestureState.isDragging) {
+      gestureState.startX = piece.position.x;
+      gestureState.startY = piece.position.y;
+      pieceRef.current.style.transform = `translate(${piece.position.x}px, ${piece.position.y}px) scale(${isActive ? 1.15 : 1})`;
     }
+  }, [piece.position, isActive, gestureState]);
+
+  const updateTransform = (currentX: number, currentY: number) => {
+    const newX = gestureState.startX + (currentX - gestureState.touchStartX);
+    const newY = gestureState.startY + (currentY - gestureState.touchStartY);
+
+    if (pieceRef.current) {
+        pieceRef.current.style.transform = `translate(${newX}px, ${newY}px) scale(${isActive ? 1.15 : 1})`;
+    }
+    animationFrameId.current = null;
   };
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    onInteractionStart(piece.id);
+    const touch = e.touches[0];
+    gestureState.touchStartX = touch.clientX;
+    gestureState.touchStartY = touch.clientY;
+
+    if (e.touches.length === 1) {
+      gestureState.isDragging = true;
+    }
+    
+    if (e.touches.length === 2) {
+      gestureState.isDragging = false;
+      gestureState.isRotating = true;
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      gestureState.initialAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
+      gestureState.initialRotation = piece.rotation;
+    }
+  }, [onInteractionStart, gestureState, piece.id, piece.rotation]);
+
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
-    if (!initialTouchState.current) return;
+    if (gestureState.isDragging && e.touches.length === 1) {
+      const touch = e.touches[0];
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+      animationFrameId.current = requestAnimationFrame(() => updateTransform(touch.clientX, touch.clientY));
+    }
 
-    const currentTouches = Array.from(e.targetTouches).map(t => ({ x: t.clientX, y: t.clientY }));
-    const initial = initialTouchState.current;
-
-    // Tek parmakla sürükleme
-    if (currentTouches.length === 1 && initial.touches.length === 1) {
-      const initialTouch = initial.touches[0];
-      const currentTouch = currentTouches[0];
-      
-      // Hassas konumlandırma için Sürükleme Ofseti
-      const dragOffsetX = 0; // Yatay ofset
-      const dragOffsetY = -80; // Dikey ofset (parmağın 80px yukarısında)
-      
-      const newPos: Position = {
-        x: currentTouch.x - (piece.position.x - initialTouch.x) - (pieceRef.current?.offsetWidth ?? 100) / 2 + dragOffsetX,
-        y: currentTouch.y - (piece.position.y - initialTouch.y) - (pieceRef.current?.offsetHeight ?? 100) / 2 + dragOffsetY,
-      };
-      
-      onMove(piece.id, newPos);
-    } 
-    // İki parmakla döndürme
-    else if (currentTouches.length === 2 && initial.touches.length === 2) {
-      const currentAngle = getAngle(currentTouches[0], currentTouches[1]);
-      const angleDifference = currentAngle - initial.angle;
-      
-      const newRotation = initial.pieceRotation + angleDifference * (180 / Math.PI);
+    if (e.touches.length === 2 && gestureState.isRotating) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
+      const angleDifference = currentAngle - gestureState.initialAngle;
+      const newRotation = gestureState.initialRotation + (angleDifference * 180 / Math.PI);
       onSetRotation(piece.id, newRotation);
     }
-  };
+  }, [gestureState, onSetRotation]);
 
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsActive(false); // Parçayı normal hale getir
-    initialTouchState.current = null; // Durumu sıfırla
-  };
 
-  const pieceRef = useRef<HTMLDivElement>(null);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+      animationFrameId.current = null;
+    }
+    
+    if (gestureState.isDragging) {
+      const finalX = gestureState.startX + (e.changedTouches[0].clientX - gestureState.touchStartX);
+      const finalY = gestureState.startY + (e.changedTouches[0].clientY - gestureState.touchStartY);
+      onMove(piece.id, { x: finalX, y: finalY });
+    }
+
+    if (e.touches.length < 2) gestureState.isRotating = false;
+    if (e.touches.length < 1) {
+      gestureState.isDragging = false;
+      onInteractionEnd();
+    }
+  }, [onInteractionEnd, gestureState, piece.id, onMove]);
+
+  const svgStyle = {
+    transform: `rotate(${piece.rotation}deg)`,
+  };
 
   return (
     <div
       ref={pieceRef}
-      className="absolute select-none"
+      className={`absolute select-none cursor-grab ${isActive ? 'z-20' : 'z-10'}`}
       style={{
-        left: piece.position.x,
-        top: piece.position.y,
         width: 100,
         height: 100,
-        transform: `rotate(${piece.rotation}deg) scale(${isActive ? 1.15 : 1})`, // Aktifken büyüt
-        transition: 'transform 0.1s ease-out',
-        zIndex: isActive ? 100 : 10, // Aktifken en üste getir
-        WebkitTapHighlightColor: 'transparent', // Dokunma vurgusunu kaldır
+        transform: `translate(${piece.position.x}px, ${piece.position.y}px) scale(${isActive ? 1.15 : 1})`,
+        touchAction: 'none',
+        userSelect: 'none',
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      // Fare ile kontrol için eski fonksiyonları da ekleyebiliriz (opsiyonel)
     >
-      <svg
-        width="100"
-        height="100"
-        viewBox="0 0 100 100"
-        className="pointer-events-none" // SVG'nin dokunma olaylarını engellemesini önle
-        style={{
-          filter: isActive ? 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' : 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
-          transition: 'filter 0.1s ease-out',
-        }}
+      <div 
+        className="w-full h-full pointer-events-none"
+        style={svgStyle}
       >
-        <g>
-          <polygon
-            points={piece.points}
-            fill={piece.color}
-            stroke="rgba(0,0,0,0.2)"
-            strokeWidth="1"
-          />
-        </g>
-      </svg>
+        <svg
+          width="100"
+          height="100"
+          viewBox="0 0 100 100"
+          className={`drop-shadow-lg ${isActive ? 'drop-shadow-xl' : ''}`}
+        >
+          {/* SCALE TRANSFORM TEKRAR EKLENDİ */}
+          <g transform={`scale(${piece.scale.x}, ${piece.scale.y}) translate(${piece.scale.x === -1 ? -100 : 0}, ${piece.scale.y === -1 ? -100 : 0})`}>
+            <polygon
+              points={piece.points}
+              fill={piece.color}
+              stroke="rgba(0,0,0,0.2)"
+              strokeWidth="1"
+            />
+          </g>
+        </svg>
+      </div>
     </div>
   );
 };
